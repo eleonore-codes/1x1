@@ -37,6 +37,10 @@
   .chips.col2 { grid-template-columns: 1fr 1fr; }
   .chips.col5 { grid-template-columns: repeat(5,1fr); }
   .chip { background: rgba(255,255,255,0.07); border: 2px solid rgba(255,255,255,0.15); border-radius: 14px; padding: 12px 6px; cursor: pointer; text-align: center; transition: all 0.15s; font-size: 0.85rem; font-weight: bold; }
+  .area-chip { display: flex; align-items: center; gap: 14px; text-align: left; padding: 16px; }
+  .area-chip .em { font-size: 2rem; margin-bottom: 0; }
+  .area-chip .area-txt .title { font-size: 1rem; font-weight: bold; margin-bottom: 4px; }
+  .area-chip .area-txt .desc { font-size: 0.75rem; color: var(--sub); font-weight: normal; line-height: 1.4; }
   .chip:hover { border-color: var(--gold); }
   .chip.sel { background: rgba(245,200,66,0.2); border-color: var(--gold); color: var(--gold); }
   .chip .em { font-size: 1.5rem; margin-bottom: 4px; }
@@ -188,7 +192,17 @@
   <p class="sub">Baue fantastische Welten — eine Antwort nach der anderen!</p>
   <label style="font-size:0.78rem;font-weight:bold;text-transform:uppercase;color:var(--purple);display:block;margin-bottom:8px;margin-top:10px;">Dein Name</label>
   <input id="inp-name" class="txt-input" type="text" placeholder="Schreib deinen Namen..." oninput="checkName()">
-  <button class="btn" id="btn-s0" disabled onclick="goS1()">Weiter →</button>
+  <button class="btn" id="btn-s0" disabled onclick="goS0b()">Weiter →</button>
+</div>
+</div>
+
+<!-- ══ SCREEN 0b: AREA SELECTION ══ -->
+<div id="s0b" class="screen">
+<div class="card">
+  <h2>Was möchtest du üben?</h2>
+  <p class="sub">Wähle einen Bereich:</p>
+  <div class="chips" id="chips-area" style="grid-template-columns:1fr;gap:12px;"></div>
+  <button class="btn" id="btn-s0b" disabled onclick="goS1()">Weiter →</button>
 </div>
 </div>
 
@@ -348,19 +362,26 @@ const CW = {
   wizard: { name:"Zauberwelt",  pieces:["🧙","✨","🔮","⭐","🌙","📚","🦉","🪄","💫","🌟"], bg:"linear-gradient(135deg,#0a1628,#1a2d4e)", acc:"#a29bfe", icon:"🧙" },
   artist: { name:"Kunstwerk",   pieces:["🎨","🌸","🦋","🌈","🎭","🖼️","🌺","💐","🦚","🎪"], bg:"linear-gradient(135deg,#1a0a1e,#2d0a3e)", acc:"#fd79a8", icon:"🎨" },
 };
-const LVL = {
+const LVL_BUILD = {
   1:{ name:"Einmaleins",      color:"#4ecdc4" },
   2:{ name:"2×1-stellig",    color:"#f5c842" },
   3:{ name:"2×2-stellig",    color:"#ff9f43" },
   4:{ name:"Division",        color:"#48dbfb" },
   5:{ name:"Division+Rest",   color:"#ff6b6b" },
 };
+const LVL_KOPF = {
+  1:{ name:"Plus/Minus leicht",        color:"#4ecdc4" },
+  2:{ name:"Plus/Minus gemischt",      color:"#f5c842" },
+  3:{ name:"Alles gemischt bis 1000",  color:"#ff9f43" },
+};
+const MAX_LVL = { build:5, kopf:3 };
+function curLVL(){ return area==="kopf" ? LVL_KOPF : LVL_BUILD; }
 const EL = { mult:"Multiplikationsfehler", add:"Additionsfehler", place:"Stellenwert-Fehler", div:"Divisionsfehler", rem:"Rest-Fehler" };
 
 // ══════════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════════
-let pname="", pers=null, gmode=null, sgoal=3, lv=1;
+let pname="", area=null, pers=null, gmode=null, sgoal=3, lv=1;
 let lvOk=0, lvBad=0, luOffered=false;
 let qs=[], qi=0, currentQ=null;
 let ok=0, bad=0, streak=0, best=0, pieces=0, secs=0;
@@ -384,6 +405,18 @@ function fmtTime(s){ const m=Math.floor(s/60),sec=s%60; return "⏱ "+String(m).
 // SETUP CHIPS
 // ══════════════════════════════════════════════════
 function buildSetup(){
+  // Area selection
+  const ac = document.getElementById("chips-area");
+  [
+    ["build","🏗️","Großes Bauwerk","Einmaleins, große Multiplikation & Division (schriftlich) — am besten auf Papier üben"],
+    ["kopf","⚡","Kopfrechnen","Plus & Minus bis 1000, kleine Multiplikation & Division — perfekt für schnelle Übungen am Handy"]
+  ].forEach(([v,e,title,desc])=>{
+    const d=document.createElement("div");
+    d.className="chip area-chip";
+    d.innerHTML=`<div class="em">${e}</div><div class="area-txt"><div class="title">${title}</div><div class="desc">${desc}</div></div>`;
+    d.onclick=()=>{ area=v; ac.querySelectorAll(".chip").forEach(c=>c.classList.remove("sel")); d.classList.add("sel"); document.getElementById("btn-s0b").disabled=false; };
+    ac.appendChild(d);
+  });
   // Personality
   const pc = document.getElementById("chips-pers");
   [["brave","🦁","Mutig"],["wizard","🧙","Zauberer"],["artist","🎨","Künstlerin"]].forEach(([v,e,l])=>{
@@ -418,7 +451,8 @@ function buildSetup(){
 // ══════════════════════════════════════════════════
 function show(id){ document.querySelectorAll(".screen").forEach(s=>{ s.classList.remove("active"); s.style.display=""; }); const el=document.getElementById(id); el.style.display="flex"; el.classList.add("active"); }
 function checkName(){ document.getElementById("btn-s0").disabled=!document.getElementById("inp-name").value.trim(); }
-function goS1(){ pname=document.getElementById("inp-name").value.trim(); show("s1"); }
+function goS0b(){ pname=document.getElementById("inp-name").value.trim(); show("s0b"); }
+function goS1(){ show("s1"); }
 function goS2(){ show("s2"); }
 function goS3(){ show("s3"); }
 
@@ -478,13 +512,93 @@ function makeD(level){
   return {t:"D",dd,dv,qt,rs,wr,ans:qt,rem:rs,steps:buildDivSteps(dd,dv),d:dd+"÷"+dv+"=?"};
 }
 
+// ── KOPFRECHNEN: Plus/Minus bis 1000 + einstellige x/: ──
+function hintAdd(a,b){
+  return "Zerlege: "+a+"+"+b+" = "+a+"+"+(Math.floor(b/100)*100||"")+(b%100? ("+"+(b%100)):"")+" → "+(a+b);
+}
+function hintSub(a,b){
+  return "Zerlege: "+a+"-"+b+" = "+a+"-"+(Math.floor(b/100)*100||0)+(b%100? ("-"+(b%100)):"")+" → "+(a-b);
+}
+function roundTo(n, step){ return Math.round(n/step)*step; }
+
+// Level 1: runde Zehner/Hunderter, kein Übertrag nötig (z.B. 340+250, 480-150)
+function makeKopf1(){
+  const isAdd = Math.random() < 0.5;
+  // pick round numbers that are multiples of 10, sum/diff stays nicely under 1000
+  const base1 = (Math.floor(Math.random()*9)+1)*100;      // 100-900
+  const base2 = (Math.floor(Math.random()*9)+1)*10;       // 10-90
+  let a = base1 + base2;
+  let b = (Math.floor(Math.random()*9)+1)*10;              // 10-90, round tens
+  if(isAdd){
+    if(a+b > 999){ b = Math.floor((999-a)/10)*10; if(b<10) b=10; }
+    return {t:"S", d:a+" + "+b+" = ?", ans:a+b, h:hintAdd(a,b)};
+  } else {
+    if(b > a) [a,b] = [b,a];
+    if(a-b < 0) b = 10;
+    return {t:"S", d:a+" − "+b+" = ?", ans:a-b, h:hintSub(a,b)};
+  }
+}
+
+// Level 2: gemischt, beliebige Zahlen bis 1000, evtl. mit Übertrag
+function makeKopf2(){
+  const isAdd = Math.random() < 0.5;
+  let a = Math.floor(Math.random()*900)+50;   // 50-949
+  let b = Math.floor(Math.random()*400)+10;   // 10-409
+  if(isAdd){
+    if(a+b > 999) b = 999-a;
+    if(b<1) b=1;
+    return {t:"S", d:a+" + "+b+" = ?", ans:a+b, h:hintAdd(a,b)};
+  } else {
+    if(b > a) [a,b] = [b,a];
+    if(a-b < 0) b = Math.floor(a/2);
+    return {t:"S", d:a+" − "+b+" = ?", ans:a-b, h:hintSub(a,b)};
+  }
+}
+
+// Level 3: voll gemischt - +/- bis 1000 UND einstellige x/:
+function makeKopf3(){
+  const r = Math.random();
+  if(r < 0.4){
+    // Plus/Minus bis 1000, voll gemischt
+    let a = Math.floor(Math.random()*900)+50;
+    let b = Math.floor(Math.random()*900)+10;
+    if(Math.random()<0.5){
+      if(a+b>999) b=999-a; if(b<1) b=1;
+      return {t:"S", d:a+" + "+b+" = ?", ans:a+b, h:hintAdd(a,b)};
+    } else {
+      if(b>a) [a,b]=[b,a];
+      if(a-b<0) b=Math.floor(a/2);
+      return {t:"S", d:a+" − "+b+" = ?", ans:a-b, h:hintSub(a,b)};
+    }
+  } else if(r < 0.7){
+    // Einstellige Multiplikation (Einmaleins-Wiederholung)
+    const a=Math.floor(Math.random()*10)+1, b=Math.floor(Math.random()*10)+1;
+    return {t:"S", d:a+" × "+b+" = ?", ans:a*b, h:hint1(a,b)};
+  } else {
+    // Einstellige Division (ohne Rest)
+    const d=Math.floor(Math.random()*9)+2, q=Math.floor(Math.random()*10)+1;
+    return {t:"S", d:(d*q)+" ÷ "+d+" = ?", ans:q, h:"Umkehr: "+d+"×"+q+"="+(d*q)};
+  }
+}
+function makeKopf(level){
+  if(level===1) return makeKopf1();
+  if(level===2) return makeKopf2();
+  return makeKopf3();
+}
+function makeKopfSet(){
+  const qs=[]; for(let i=0;i<60;i++) qs.push(makeKopf1());
+  return shuffle(qs);
+}
+
 // ══════════════════════════════════════════════════
 // GAME START / NEXT
 // ══════════════════════════════════════════════════
 function startGame(){
-  qs=makeL1(); qi=0; lv=1; lvOk=0; lvBad=0; luOffered=false;
+  lv=1; lvOk=0; lvBad=0; luOffered=false;
   ok=0; bad=0; streak=0; best=0; pieces=0; secs=0;
   errs={mult:0,add:0,place:0,div:0,rem:0}; worldEmojis=[];
+  if(area==="kopf"){ qs=makeKopfSet(); qi=0; }
+  else { qs=makeL1(); qi=0; }
   clearInterval(timerInterval); timerInterval=setInterval(()=>{ secs++; document.getElementById("hdr-timer").textContent=fmtTime(secs); },1000);
   buildWorldBox(); buildLvlDots(); updateHeader(); updateBars();
   setQ(qs[0]); show("s4");
@@ -493,9 +607,14 @@ function startGame(){
 function nextQ(){
   resetQState();
   let q;
-  if(lv<=1){ qi=(qi+1)%qs.length; q=qs[qi]; }
-  else if(lv<=3){ q=makeM(lv); }
-  else{ q=makeD(lv); }
+  if(area==="kopf"){
+    if(lv===1){ qi=(qi+1)%qs.length; q=qs[qi]; }
+    else { q=makeKopf(lv); }
+  } else {
+    if(lv<=1){ qi=(qi+1)%qs.length; q=qs[qi]; }
+    else if(lv<=3){ q=makeM(lv); }
+    else{ q=makeD(lv); }
+  }
   setQ(q);
 }
 function resetQState(){
@@ -790,18 +909,18 @@ function showFb(msg,isOk,et){
 // LEVEL UP
 // ══════════════════════════════════════════════════
 function checkLvlUp(){
-  if(luOffered||lv>=5) return;
+  if(luOffered||lv>=MAX_LVL[area]) return;
   const tot=lvOk+lvBad; if(tot<5) return;
   if(lvOk/tot>=0.8){ luOffered=true; setTimeout(showLvlUpPopup,800); }
 }
 function showLvlUpPopup(){
   const nl=lv+1;
   document.getElementById("lvlup-title").textContent="Level "+nl+" freigeschaltet!";
-  document.getElementById("lvlup-title").style.color=LVL[nl].color;
+  document.getElementById("lvlup-title").style.color=curLVL()[nl].color;
   document.getElementById("lvlup-sub").textContent="Du hast 80% Genauigkeit auf Level "+lv+" erreicht!";
-  document.getElementById("lvlup-desc").textContent=LVL[nl].name;
-  document.getElementById("lvlup-popup").style.borderColor=LVL[nl].color;
-  document.getElementById("lvlup-yes").style.background="linear-gradient(135deg,"+LVL[nl].color+",#f5c842)";
+  document.getElementById("lvlup-desc").textContent=curLVL()[nl].name;
+  document.getElementById("lvlup-popup").style.borderColor=curLVL()[nl].color;
+  document.getElementById("lvlup-yes").style.background="linear-gradient(135deg,"+curLVL()[nl].color+",#f5c842)";
   document.getElementById("lvlup-overlay").classList.add("show");
 }
 function acceptLevelUp(){
@@ -856,12 +975,13 @@ function updateWorldBox(){
 }
 function buildLvlDots(){
   const cont=document.getElementById("lvl-dots"); cont.innerHTML="";
-  for(let i=1;i<=5;i++){ const d=document.createElement("div"); d.className="lvl-dot"; d.style.background=i<=lv?LVL[i].color:"rgba(255,255,255,0.15)"; cont.appendChild(d); }
+  const maxL=MAX_LVL[area];
+  for(let i=1;i<=maxL;i++){ const d=document.createElement("div"); d.className="lvl-dot"; d.style.background=i<=lv?curLVL()[i].color:"rgba(255,255,255,0.15)"; cont.appendChild(d); }
 }
 function updateHeader(){
   const cw=CW[pers];
   document.getElementById("hdr-icon").textContent=cw.icon;
-  document.getElementById("hdr-lvl").textContent=LVL[lv].name;
+  document.getElementById("hdr-lvl").textContent=curLVL()[lv].name;
   document.getElementById("hdr-streak").textContent=streak;
   document.getElementById("hdr-pieces").textContent=pieces;
 }
@@ -871,9 +991,9 @@ function updateBars(){
   accEl.style.color=acc>=80?"var(--mint)":acc>=50?"var(--gold)":"var(--coral)";
   document.getElementById("acc-bar").style.width=acc+"%";
   const lp=lvOk+lvBad>0?Math.round(lvOk/(lvOk+lvBad)*100):0;
-  document.getElementById("lvl-label").textContent="Level "+lv+": "+LVL[lv].name;
-  document.getElementById("lvl-pct").textContent=lp+"%"; document.getElementById("lvl-pct").style.color=LVL[lv].color;
-  document.getElementById("lvl-bar").style.width=lp+"%"; document.getElementById("lvl-bar").style.background=LVL[lv].color;
+  document.getElementById("lvl-label").textContent="Level "+lv+": "+curLVL()[lv].name;
+  document.getElementById("lvl-pct").textContent=lp+"%"; document.getElementById("lvl-pct").style.color=curLVL()[lv].color;
+  document.getElementById("lvl-bar").style.width=lp+"%"; document.getElementById("lvl-bar").style.background=curLVL()[lv].color;
   const pp=Math.round((streak%sgoal)/sgoal*100);
   document.getElementById("str-val").textContent=(streak%sgoal)+" / "+sgoal;
   document.getElementById("str-bar").style.width=pp+"%";
@@ -894,7 +1014,7 @@ function showEndScreen(){
   document.getElementById("end-label").textContent=gl;
   document.getElementById("end-name-msg").textContent=pname+", hier ist deine Auswertung:";
   const res=document.getElementById("end-results"); res.innerHTML="";
-  [{l:"Richtige Antworten",v:ok,c:"var(--mint)"},{l:"Falsche Antworten",v:bad,c:"var(--coral)"},{l:"Genauigkeit",v:acc+"%",c:"var(--gold)"},{l:"Bausteine gebaut",v:pieces,c:"var(--gold)"},{l:"Bester Streak",v:best,c:"var(--purple)"},{l:"Level erreicht",v:LVL[lv].name,c:LVL[lv].color}].forEach(r=>{ res.innerHTML+=`<div class="result-row"><span class="lbl">${r.l}</span><span style="font-weight:bold;color:${r.c}">${r.v}</span></div>`; });
+  [{l:"Richtige Antworten",v:ok,c:"var(--mint)"},{l:"Falsche Antworten",v:bad,c:"var(--coral)"},{l:"Genauigkeit",v:acc+"%",c:"var(--gold)"},{l:"Bausteine gebaut",v:pieces,c:"var(--gold)"},{l:"Bester Streak",v:best,c:"var(--purple)"},{l:"Level erreicht",v:curLVL()[lv].name,c:curLVL()[lv].color}].forEach(r=>{ res.innerHTML+=`<div class="result-row"><span class="lbl">${r.l}</span><span style="font-weight:bold;color:${r.c}">${r.v}</span></div>`; });
   const ee=document.getElementById("end-errs"); ee.innerHTML="";
   Object.entries(errs).forEach(([k,v])=>{ ee.innerHTML+=`<div class="result-row"><span class="lbl">${EL[k]}</span><span style="font-weight:bold;color:${v===0?"var(--mint)":"var(--coral)"}">${v===0?"✓ Kein Fehler":v}</span></div>`; });
   show("s5");
